@@ -1,4 +1,4 @@
--- Invisible upon Cloning - Mantém a animação original de "dentro do chão"
+-- Invisible upon Cloning - Adaptado pro Gubby Gui (com animação de entrar no chão)
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -6,14 +6,13 @@ local LocalPlayer = Players.LocalPlayer
 local running = false
 local animTrack = nil
 
--- Função principal (toggle ON/OFF)
+-- Função principal (ON/OFF)
 local function handleToggle(enabled)
     running = enabled
     
     if enabled then
-        print("[Invis Clone] LIGADO - monitorando continuamente...")
+        print("[Invis Clone] LIGADO - procurando clone...")
         
-        -- Loop que roda enquanto estiver ligado
         spawn(function()
             while running do
                 local character = LocalPlayer.Character
@@ -34,12 +33,12 @@ local function handleToggle(enabled)
                         animTrack = animator:LoadAnimation(animation)
                         animTrack.Looped = true
                         animTrack:Play()
-                        animTrack:AdjustSpeed(0.001)  -- Speed quase zero pra evitar glitch de loop rápido
+                        animTrack:AdjustSpeed(0.001)  -- Evita o loop glitchado
                         
                         if root then
                             root.Transparency = 0.4
                         end
-                        print("[Invis Clone] Clone detectado - entrando no chão!")
+                        print("[Invis Clone] CLONE DETECTADO! Entrando no chão...")
                     end
                 else
                     if animTrack and animTrack.IsPlaying then
@@ -72,12 +71,12 @@ local function handleToggle(enabled)
     end
 end
 
--- Função global que o Gubby Gui chama
+-- Função global pro Gubby Gui chamar
 getgenv().ToggleInvisibleCloning = function(enabled)
     handleToggle(enabled)
 end
 
--- Reset ao respawn (mantém ligado se estava ON)
+-- Reset ao respawn
 LocalPlayer.CharacterAdded:Connect(function()
     if running then
         local character = LocalPlayer.Character
@@ -87,8 +86,8 @@ LocalPlayer.CharacterAdded:Connect(function()
                 root.Transparency = 1
             end
         end
-        print("[Invis Clone] Respawn - resetado, mas continua ligado.")
+        print("[Invis Clone] Respawn - resetado, continua ligado.")
     end
 end)
 
-print("[Invis Clone] Carregado! Monitora continuamente enquanto ligado.")
+print("[Invis Clone] Carregado! Monitora enquanto ligado.")
