@@ -1,5 +1,6 @@
--- Invisible Upon Cloning - Toggleable Module (versão corrigida: só ativa no momento do clone)
--- Agora só reage quando o clone realmente acontece (transparência alta + verificação extra)
+-- Invisible Upon Cloning - Toggleable Module (corrigido: só ativa no momento real do clone)
+-- Agora com threshold alto ( >= 0.8 ) pra evitar ativar cedo
+-- Só reage quando o jogo aplica transparência alta na skill de clone
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -15,6 +16,8 @@ local function setInvisibility(enabled)
         if running then return end
         running = true
         
+        print("[Invis Toggle] Modo ON ativado - esperando clone real...")
+        
         connection = game:GetService("RunService").Heartbeat:Connect(function()
             if not running then return end
             
@@ -27,9 +30,9 @@ local function setInvisibility(enabled)
             local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
             if not root then return end
             
-            -- Só ativa se transparência for ALTA (indicando clone real, não bug ou efeito normal)
-            -- No Forsaken, clones costumam setar Transparency = 1 ou próximo disso
-            if root.Transparency >= 0.8 then  -- Aumentei o threshold pra evitar ativar cedo
+            -- Threshold alto: só ativa quando transparência é muito alta (clone real)
+            -- No Forsaken, invis/clone chega a \~0.925 ou 1.0
+            if root.Transparency >= 0.8 then
                 if not animTrack or not animTrack.IsPlaying then
                     local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
                     
@@ -41,11 +44,11 @@ local function setInvisibility(enabled)
                     animTrack:Play()
                     animTrack:AdjustSpeed(0)
                     
-                    root.Transparency = 0.4  -- Mantém visível pro player, mas "invis" pro jogo
-                    print("[Invis Toggle] Clone detectado! Pose ativada.")
+                    root.Transparency = 0.4  -- Mantém visível pra você
+                    print("[Invis Toggle] Clone detectado! Pose freeze ativada.")
                 end
             else
-                -- Desativa quando o clone acaba (transparência volta a 0 ou baixa)
+                -- Desativa quando transparência volta ao normal
                 if animTrack and animTrack.IsPlaying then
                     animTrack:Stop()
                     animTrack = nil
@@ -72,6 +75,7 @@ local function setInvisibility(enabled)
                 root.Transparency = 1
             end
         end
+        print("[Invis Toggle] Modo OFF - tudo resetado.")
     end
 end
 
@@ -81,8 +85,9 @@ end
 
 LocalPlayer.CharacterAdded:Connect(function()
     if running then
-        setInvisibility(false)  -- Reset ao respawn
+        setInvisibility(false)
+        print("[Invis Toggle] Reset ao respawn.")
     end
 end)
 
-print("[Invisible Cloning Toggle] Carregado! Agora só ativa no momento do clone real.")
+print("[Invisible Cloning Toggle] Carregado! Só ativa quando transparência >= 0.8 (clone real).")
