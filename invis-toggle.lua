@@ -1,6 +1,5 @@
--- Invisible Upon Cloning - Toggleable Module for Gubby Gui
--- Esse script fica no GitHub e é carregado via loadstring
--- Função global: getgenv().ToggleInvisibleCloning(true/false)
+-- Invisible Upon Cloning - Toggleable Module (versão corrigida: só ativa no momento do clone)
+-- Agora só reage quando o clone realmente acontece (transparência alta + verificação extra)
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -9,7 +8,7 @@ local running = false
 local animTrack = nil
 local connection = nil
 
-local ANIMATION_ID = "rbxassetid://75804462760596"  -- Animação de pose freeze para simular invis
+local ANIMATION_ID = "rbxassetid://75804462760596"
 
 local function setInvisibility(enabled)
     if enabled then
@@ -25,30 +24,33 @@ local function setInvisibility(enabled)
             local humanoid = char:FindFirstChildOfClass("Humanoid")
             if not humanoid then return end
             
-            local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
-            
             local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
             if not root then return end
             
-            -- Se o root já está transparente (clonado/invis), ativa pose freeze + transparência extra
-            if root.Transparency > 0.1 then
+            -- Só ativa se transparência for ALTA (indicando clone real, não bug ou efeito normal)
+            -- No Forsaken, clones costumam setar Transparency = 1 ou próximo disso
+            if root.Transparency >= 0.8 then  -- Aumentei o threshold pra evitar ativar cedo
                 if not animTrack or not animTrack.IsPlaying then
+                    local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+                    
                     local animation = Instance.new("Animation")
                     animation.AnimationId = ANIMATION_ID
                     
                     animTrack = animator:LoadAnimation(animation)
                     animTrack.Looped = true
                     animTrack:Play()
-                    animTrack:AdjustSpeed(0)  -- Freeze na pose
+                    animTrack:AdjustSpeed(0)
                     
-                    root.Transparency = 0.4  -- Deixa mais visível pro player, mas ainda "invis" pro jogo
+                    root.Transparency = 0.4  -- Mantém visível pro player, mas "invis" pro jogo
+                    print("[Invis Toggle] Clone detectado! Pose ativada.")
                 end
             else
-                -- Desativa quando volta ao normal
+                -- Desativa quando o clone acaba (transparência volta a 0 ou baixa)
                 if animTrack and animTrack.IsPlaying then
                     animTrack:Stop()
                     animTrack = nil
                     root.Transparency = 1
+                    print("[Invis Toggle] Clone acabou! Pose desativada.")
                 end
             end
         end)
@@ -73,16 +75,14 @@ local function setInvisibility(enabled)
     end
 end
 
--- Função global que o Gubby Gui chama
 getgenv().ToggleInvisibleCloning = function(enabled)
     setInvisibility(enabled)
 end
 
--- Reseta ao respawn (boa prática)
 LocalPlayer.CharacterAdded:Connect(function()
     if running then
-        setInvisibility(false)
+        setInvisibility(false)  -- Reset ao respawn
     end
 end)
 
-print("[Invisible Cloning Toggle] Carregado! Use ToggleInvisibleCloning(true/false)")
+print("[Invisible Cloning Toggle] Carregado! Agora só ativa no momento do clone real.")
