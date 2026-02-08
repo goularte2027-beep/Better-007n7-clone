@@ -1,105 +1,100 @@
--- Invis Clone com "debaixo do chão" por 5 segundos após clone
--- Detecta transparência alta → abaixa pro chão → espera 5s → volta pra cima
+-- Invisible upon Cloning - com animação de "dentro do chão" corrigida (sem glitch)
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
-local enabled = false
+local running = false
+local animTrack = nil
 local connection = nil
-local isCloned = false
 
-local function setMode(active)
-    enabled = active
+local ANIMATION_ID = "rbxassetid://75804462760596"
+
+local function handleToggle(enabled)
+    running = enabled
     
-    if active then
-        print("[Invis Under Ground] Modo ON - esperando uso do clone...")
+    if enabled then
+        print("[Invis Under Ground] LIGADO - monitorando clone continuamente...")
+        
+        connection = game:GetService("RunService").Heartbeat:Connect(function()
+            if not running then return end
+            
+            local character = LocalPlayer.Character
+            if not character then return end
+            
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if not humanoid then return end
+            
+            local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+            
+            local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+            local root = character:FindFirstChild("HumanoidRootPart")
+            
+            if torso and torso.Transparency > 0 then  -- Clone ativo
+                if not animTrack or not animTrack.IsPlaying then
+                    local animation = Instance.new("Animation")
+                    animation.AnimationId = ANIMATION_ID
+                    
+                    animTrack = animator:LoadAnimation(animation)
+                    animTrack.Looped = true
+                    animTrack.Priority = Enum.AnimationPriority.Action4  -- Prioridade alta
+                    
+                    animTrack:Play()
+                    animTrack:AdjustSpeed(0.001)  -- Speed quase zero, mas evita glitch
+                    
+                    if root then
+                        root.Transparency = 0.4  -- Invisível pro jogo, visível pra você
+                    end
+                    print("[Invis Under Ground] Clone detectado - entrando no chão!")
+                end
+            else
+                if animTrack and animTrack.IsPlaying then
+                    animTrack:Stop()
+                    animTrack = nil
+                    if root then
+                        root.Transparency = 1
+                    end
+                    print("[Invis Under Ground] Clone acabou - saindo do chão.")
+                end
+            end
+        end)
     else
-        print("[Invis Under Ground] Modo OFF")
+        print("[Invis Under Ground] DESLIGADO")
         if connection then
             connection:Disconnect()
             connection = nil
         end
-        isCloned = false
-        -- Garante que volta pra posição normal ao desligar
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local hrp = char.HumanoidRootPart
-            hrp.CFrame = hrp.CFrame + Vector3.new(0, 5, 0)  -- força subir um pouco
+        
+        if animTrack and animTrack.IsPlaying then
+            animTrack:Stop()
+            animTrack = nil
+        end
+        
+        local character = LocalPlayer.Character
+        if character then
+            local root = character:FindFirstChild("HumanoidRootPart")
+            if root then
+                root.Transparency = 1
+            end
         end
     end
 end
 
-getgenv().ToggleUnderGroundClone = function(active)
-    setMode(active)
+getgenv().ToggleInvisibleCloning = function(enabled)
+    handleToggle(enabled)
 end
 
--- Loop de detecção
-local function startDetection()
-    connection = RunService.Heartbeat:Connect(function()
-        if not enabled then return end
-        
-        local char = LocalPlayer.Character
-        if not char then return end
-        
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        
-        -- Detecta o momento do clone (transparência alta)
-        if root.Transparency >= 0.75 and not isCloned then
-            isCloned = true
-            print("[Invis Under Ground] Clone detectado! Abaixando pro chão...")
-            
-            -- Abaixa pro chão (loop pra ficar "debaixo do solo")
-            task.spawn(function()
-                local downOffset = Vector3.new(0, -4.5, 0)  -- quanto abaixar (ajuste se precisar mais ou menos)
-                local startTime = tick()
-                
-                while tick() - startTime < 5.1 and isCloned and enabled do
-                    if char and root and root.Parent then
-                        root.CFrame = root.CFrame + downOffset * 0.05  -- movimento suave pra baixo
-                    end
-                    task.wait(0.03)
-                end
-                
-                -- Após 5 segundos, volta pra cima
-                if isCloned and enabled then
-                    print("[Invis Under Ground] 5 segundos acabaram! Voltando pra cima...")
-                    if char and root and root.Parent then
-                        root.CFrame = root.CFrame + Vector3.new(0, 5, 0)  -- sobe de volta
-                    end
-                    isCloned = false
-                end
-            end)
-        end
-        
-        -- Se transparência voltar ao normal antes dos 5s (clone cancelado), reseta
-        if root.Transparency < 0.5 and isCloned then
-            isCloned = false
-            print("[Invis Under Ground] Clone cancelado antes dos 5s - resetando.")
-        end
-    end)
-end
-
--- Inicia detecção quando toggle liga
-local oldEnabled = false
-RunService.Heartbeat:Connect(function()
-    if enabled \~= oldEnabled then
-        oldEnabled = enabled
-        if enabled then
-            startDetection()
-        else
-            if connection then connection:Disconnect() connection = nil end
-        end
-    end
-end)
-
--- Reset ao respawn
+-- Reset ao respawn (mantém ligado se estava ON)
 LocalPlayer.CharacterAdded:Connect(function()
-    isCloned = false
-    if enabled then
-        print("[Invis Under Ground] Respawn detectado - resetando estado.")
+    if running then
+        local character = LocalPlayer.Character
+        if character then
+            local root = character:FindFirstChild("HumanoidRootPart")
+            if root then
+                root.Transparency = 1
+            end
+        end
+        print("[Invis Under Ground] Respawn - resetado, monitoramento continua.")
     end
 end)
 
-print("[Invis Under Ground] Carregado! Ativa só quando clone usado → abaixa 5s → volta.")
+print("[Invis Under Ground] Carregado! Monitora continuamente enquanto ligado.")
