@@ -1,69 +1,62 @@
--- Invisible upon Cloning - com animação de "dentro do chão" corrigida (sem glitch)
+-- Invisible upon Cloning - Mantém a animação original de "dentro do chão"
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 local running = false
 local animTrack = nil
-local connection = nil
 
-local ANIMATION_ID = "rbxassetid://75804462760596"
-
+-- Função principal (toggle ON/OFF)
 local function handleToggle(enabled)
     running = enabled
     
     if enabled then
-        print("[Invis Under Ground] LIGADO - monitorando clone continuamente...")
+        print("[Invis Clone] LIGADO - monitorando continuamente...")
         
-        connection = game:GetService("RunService").Heartbeat:Connect(function()
-            if not running then return end
-            
-            local character = LocalPlayer.Character
-            if not character then return end
-            
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            if not humanoid then return end
-            
-            local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
-            
-            local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
-            local root = character:FindFirstChild("HumanoidRootPart")
-            
-            if torso and torso.Transparency > 0 then  -- Clone ativo
-                if not animTrack or not animTrack.IsPlaying then
-                    local animation = Instance.new("Animation")
-                    animation.AnimationId = ANIMATION_ID
-                    
-                    animTrack = animator:LoadAnimation(animation)
-                    animTrack.Looped = true
-                    animTrack.Priority = Enum.AnimationPriority.Action4  -- Prioridade alta
-                    
-                    animTrack:Play()
-                    animTrack:AdjustSpeed(0.001)  -- Speed quase zero, mas evita glitch
-                    
-                    if root then
-                        root.Transparency = 0.4  -- Invisível pro jogo, visível pra você
+        -- Loop que roda enquanto estiver ligado
+        spawn(function()
+            while running do
+                local character = LocalPlayer.Character
+                if not character then task.wait(0.5) continue end
+                
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if not humanoid then task.wait(0.5) continue end
+                
+                local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+                
+                local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+                local root = character:FindFirstChild("HumanoidRootPart")
+                
+                if torso and torso.Transparency \~= 0 then
+                    if not animTrack or not animTrack.IsPlaying then
+                        local animation = Instance.new("Animation")
+                        animation.AnimationId = "rbxassetid://75804462760596"
+                        animTrack = animator:LoadAnimation(animation)
+                        animTrack.Looped = true
+                        animTrack:Play()
+                        animTrack:AdjustSpeed(0.001)  -- Speed quase zero pra evitar glitch de loop rápido
+                        
+                        if root then
+                            root.Transparency = 0.4
+                        end
+                        print("[Invis Clone] Clone detectado - entrando no chão!")
                     end
-                    print("[Invis Under Ground] Clone detectado - entrando no chão!")
-                end
-            else
-                if animTrack and animTrack.IsPlaying then
-                    animTrack:Stop()
-                    animTrack = nil
-                    if root then
-                        root.Transparency = 1
+                else
+                    if animTrack and animTrack.IsPlaying then
+                        animTrack:Stop()
+                        animTrack = nil
+                        if root then
+                            root.Transparency = 1
+                        end
+                        print("[Invis Clone] Clone acabou - saindo do chão.")
                     end
-                    print("[Invis Under Ground] Clone acabou - saindo do chão.")
                 end
+                
+                task.wait(0.5)  -- Delay do original
             end
         end)
     else
-        print("[Invis Under Ground] DESLIGADO")
-        if connection then
-            connection:Disconnect()
-            connection = nil
-        end
-        
+        print("[Invis Clone] DESLIGADO")
         if animTrack and animTrack.IsPlaying then
             animTrack:Stop()
             animTrack = nil
@@ -79,6 +72,7 @@ local function handleToggle(enabled)
     end
 end
 
+-- Função global que o Gubby Gui chama
 getgenv().ToggleInvisibleCloning = function(enabled)
     handleToggle(enabled)
 end
@@ -93,8 +87,8 @@ LocalPlayer.CharacterAdded:Connect(function()
                 root.Transparency = 1
             end
         end
-        print("[Invis Under Ground] Respawn - resetado, monitoramento continua.")
+        print("[Invis Clone] Respawn - resetado, mas continua ligado.")
     end
 end)
 
-print("[Invis Under Ground] Carregado! Monitora continuamente enquanto ligado.")
+print("[Invis Clone] Carregado! Monitora continuamente enquanto ligado.")
